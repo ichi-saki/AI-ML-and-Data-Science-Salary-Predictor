@@ -1,0 +1,237 @@
+import kagglehub
+import pandas as pd
+import numpy as np
+import matplotlib.pylab as plt
+from sklearn.linear_model import Ridge, LinearRegression, Lasso
+from sklearn.tree import DecisionTreeRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import StandardScaler
+import seaborn as sns
+import tkinter as tk
+from tkinter import messagebox
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+
+class GUI:
+def __init__(self, root):
+self.root = root
+self.root.title(&quot;AI, ML, Data Science 2020-2025&quot;)
+self.root.geometry(&quot;1100x800&quot;)
+
+self.dataset = &quot;samithsachidanandan/the-global-ai-ml-data-science-salary-for-
+2025&quot;
+self.path = kagglehub.dataset_download(self.dataset)
+self.df = pd.read_csv(f&quot;{self.path}/salaries.csv&quot;)
+
+12
+
+self.setup_gui()
+def setup_gui(self):
+self.frame = tk.Frame(self.root)
+self.frame.pack(fill=tk.BOTH, expand=True)
+button_frame = tk.Frame(self.root, height=60)
+button_frame.pack(side=tk.BOTTOM, fill=tk.X)
+tk.Button(button_frame, text=&quot;Salary Distribution&quot;, font=(&#39;Times&#39;, 18), command =
+self.salary_dis).pack(side=tk.LEFT, expand=True)
+tk.Button(button_frame, text=&quot;Salary By Expirence&quot;, font=(&#39;Times&#39;, 18), command =
+self.salary_by_experience).pack(side=tk.LEFT, expand=True)
+tk.Button(button_frame, text=&quot;Top Countries&quot;, font=(&#39;Times&#39;, 18), command =
+self.top_countries).pack(side=tk.LEFT, expand=True)
+tk.Button(button_frame, text=&quot;Regresssion&quot;, font=(&#39;Times&#39;, 18), command =
+self.create_and_test_model).pack(side=tk.LEFT, expand=True)
+tk.Label(button_frame, text=&quot;Test %&quot;, font=(&#39;Times&#39;, 18)).pack(side=tk.LEFT,
+expand=True)
+self.test_size = tk.Entry(button_frame, width=7, font=(&#39;Times&#39;, 18))
+self.test_size.pack(side=tk.LEFT, expand=True)
+tk.Label(button_frame, text=&quot;Model #&quot;, font=(&#39;Times&#39;, 18)).pack(side=tk.LEFT,
+expand=True)
+model_options = [1,2,3,4]
+self.model=tk.StringVar(root)
+self.model.set(model_options[0])
+dropdown = tk.OptionMenu(button_frame, self.model, *model_options)
+dropdown.config(font=(&#39;Times&#39;, 18))
+dropdown.pack(side=tk.LEFT, expand=True)
+self.salary_dis()
+def create_and_test_model(self, test_size=0.2):
+if not self.test_size.get():
+test_size = test_size
+else:
+test_size = float(self.test_size.get())
+df = self.df[self.df[&#39;salary_in_usd&#39;] &lt; 400000]
+df.drop_duplicates()
+experience_level= {
+
+13
+
+&quot;EN&quot;: &quot;Entry-level&quot;,
+&quot;MI&quot;: &quot;Mid-level&quot;,
+&quot;SE&quot;: &quot;Senior-level&quot;,
+&quot;EX&quot;: &quot;Executive-level&quot;
+}
+employment_type = {
+&quot;PT&quot;: &quot;Part-time&quot;,
+&quot;FT&quot;: &quot;Full-time&quot;,
+&quot;CT&quot;: &quot;Contract&quot;,
+&quot;FL&quot;: &quot;Freelance&quot;
+}
+company_size = {
+&quot;S&quot;: &quot;Small&quot;,
+&quot;M&quot;: &quot;Medium&quot;,
+&quot;L&quot;: &quot;Large&quot;
+}
+df.loc[:, &quot;experience_level&quot;] = df[&quot;experience_level&quot;].map(experience_level)
+df.loc[:, &quot;employment_type&quot;] = df[&quot;employment_type&quot;].map(employment_type)
+df.loc[:, &quot;company_size&quot;] = df[&quot;company_size&quot;].map(company_size)
+features_df = df.drop([&#39;salary_currency&#39;], axis = 1)
+features_df = pd.get_dummies(features_df, columns=[&#39;experience_level&#39;,
+&#39;employment_type&#39;, &#39;job_title&#39;, &#39;employee_residence&#39;, &#39;company_location&#39;,
+&#39;company_size&#39;])
+X = features_df.drop(&#39;salary_in_usd&#39;, axis=1)
+y = features_df[&#39;salary_in_usd&#39;]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size,
+random_state=42)
+model_name = &quot;name&quot;
+if not self.model.get():
+model_name = &quot;Ridge Regression&quot;
+model_to_use = Ridge(alpha=1.0)
+else:
+model = int(self.model.get())
+if model == 1:
+model_name = &quot;Ridge Regression&quot;
+model_to_use = Ridge(alpha=1.0)
+if model == 2:
+model_name = &quot;Multi-Linear Regression&quot;
+model_to_use = LinearRegression()
+
+14
+
+if model == 3:
+model_name = &quot;Lasso Regression&quot;
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+model_to_use = Lasso(alpha=80)
+
+if model == 4:
+model_name = &quot;Decision Tree Regression&quot;
+model_to_use =
+DecisionTreeRegressor(max_depth=3,min_samples_leaf=10,random_state=42)
+model_to_use.fit(X_train, y_train)
+
+y_pred = model_to_use.predict(X_test)
+#y_pred = np.clip(y_pred, 20000, 400000)
+y_true = y_test
+if int(self.model.get()) != 4:
+coef = pd.Series(model_to_use.coef_,
+index=X.columns).sort_values(ascending=False)
+if hasattr(self, &#39;canvas&#39;):
+self.canvas.get_tk_widget().destroy() # Remove the old canvas widget
+plt.close(self.fig)
+
+self.fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(17,7))
+
+ax1.scatter(y_true, y_pred, alpha=0.5, color=&#39;blue&#39;, label=&#39;Test Data&#39;)
+ax1.plot([y_true.min(), y_true.max()], [y_true.min(), y_true.max()], &#39;r-&#39;, label=&#39;Ideal&#39;)
+ax1.set_xlabel(&#39;Actual Salary (USD)&#39;)
+ax1.set_ylabel(&#39;Predicted Salary (USD)&#39;)
+ax1.set_title(&#39;Actual vs. Predicted Salaries&#39;)
+#ax1.set_ylim([y_true.min() * 0.9, y_true.max()])
+ax1.legend()
+residuals = y_true - y_pred
+ax2.scatter(y_pred, residuals)
+ax2.axhline(0, color=&#39;red&#39;)
+ax2.set_xlabel(&#39;Predicted Salaries&#39;)
+
+15
+
+ax2.set_ylabel(&#39;Residuals&#39;)
+ax2.set_title(&#39;Residuals vs Predicted Salaries&#39;)
+self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame)
+self.canvas_widget = self.canvas.get_tk_widget()
+self.canvas_widget.pack(fill=tk.BOTH, expand=True)
+if int(self.model.get()) != 4:
+messagebox.showinfo(
+f&quot;{model_name} Analysis&quot;,
+f&#39;&#39;&#39;
+R^2: {r2_score(y_true, y_pred):.3f}
+MSE: {mean_squared_error(y_true, y_pred):,.2f}
+Top Factors that Increase Salary:\n{coef.head(10).round(3)}
+Top Factors that Decrease Salary:\n{coef.tail(10).round(3)}&#39;&#39;&#39;)
+else:
+#cv_r2 = cross_val_score(model_to_use, X, y, cv=5, scoring=&#39;r2&#39;).mean()
+#print(f&quot;CV R²: {cv_r2:.2f}&quot;)
+messagebox.showinfo(
+&quot;Decision Tree Regression Analysis&quot;,
+f&#39;&#39;&#39;
+R^2: {r2_score(y_true, y_pred):.3f}
+MSE: {mean_squared_error(y_true, y_pred):,.2f}
+&#39;&#39;&#39;)
+
+def salary_dis(self):
+if hasattr(self, &#39;canvas&#39;):
+self.canvas.get_tk_widget().destroy() # Remove the old canvas widget
+plt.close(self.fig)
+
+self.fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(17,7))
+df = self.df[self.df[&#39;salary_in_usd&#39;]&lt; 400000]
+years = sorted(self.df[&#39;work_year&#39;].unique())
+
+16
+
+sns.histplot(self.df[&#39;salary_in_usd&#39;], bins=50, kde=True, ax=ax1)
+ax1.set_title(&#39;Salary Distribution (in USD)&#39;)
+ax1.set_xlabel(&#39;Salary (USD)&#39;)
+ax1.set_ylabel(&#39;Frequency&#39;)
+
+for year in years:
+data = self.df[self.df[&#39;work_year&#39;] == year][&#39;salary_in_usd&#39;]
+sns.kdeplot(data,label=str(year), fill=True, alpha=0.9, ax=ax2)
+ax2.set_title(&#39;Salary Distribution for Each year (USD)&#39;)
+ax2.set_xlabel(&#39;Salary (usd)&#39;)
+ax2.set_ylabel(&#39;Frequency&#39;)
+ax2.legend(title=&#39;Year&#39;)
+
+self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame)
+self.canvas_widget = self.canvas.get_tk_widget()
+self.canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+def salary_by_experience(self):
+if hasattr(self, &#39;canvas&#39;):
+self.canvas.get_tk_widget().destroy() # Remove the old canvas widget
+plt.close(self.fig)
+self.fig, self.ax = plt.subplots(figsize=(9,7))
+exp_salary =
+self.df.groupby(&#39;experience_level&#39;)[&#39;salary_in_usd&#39;].mean().sort_values()
+sns.barplot(x=exp_salary.index, y=exp_salary.values, palette=&#39;viridis&#39;)
+plt.title(&#39;Average Salary by Experience Level&#39;)
+plt.xlabel(&#39;Experience Level&#39;)
+plt.ylabel(&#39;Average Salary (USD)&#39;)
+self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame)
+self.canvas_widget = self.canvas.get_tk_widget()
+self.canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+def top_countries(self):
+if hasattr(self, &#39;canvas&#39;):
+
+17
+
+self.canvas.get_tk_widget().destroy() # Remove the old canvas widget
+plt.close(self.fig)
+self.fig, self.ax = plt.subplots(figsize=(9,7))
+country_salary =
+self.df.groupby(&#39;company_location&#39;)[&#39;salary_in_usd&#39;].mean().sort_values(ascending=Fals
+e)
+sns.barplot(x=country_salary.head(10).values, y=country_salary.head(10).index,
+palette=&#39;coolwarm&#39;)
+plt.title(&#39;Top 10 Countries by Average Salary&#39;)
+plt.xlabel(&#39;Average Salary (USD)&#39;)
+plt.ylabel(&#39;Country&#39;)
+self.canvas = FigureCanvasTkAgg(self.fig, master=self.frame)
+self.canvas_widget = self.canvas.get_tk_widget()
+self.canvas_widget.pack(fill=tk.BOTH, expand=True)
+
+root = tk.Tk()
+app = GUI(root)
+root.mainloop()
